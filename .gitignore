@@ -18,3 +18,8 @@ tmp/*
 target/
 mutants.out/
 x-api/Cargo.lock
+
+target-cache/
+.env
+.env.*
+*.cookies.json

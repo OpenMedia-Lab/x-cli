@@ -2,7 +2,8 @@
 name = "x"
 version = "6.0.0"
 edition = "2024"
-description = "Command-line interface for the X API"
+description = "Rust X CLI with native browser sessions and JSON output"
+repository = "https://github.com/OpenMedia-Lab/x-cli"
 license = "MIT"
 
 [lib]
@@ -39,3 +40,7 @@ push-remote = "origin"
 tag-name = "v{{version}}"
 tag-message = "Release {{tag_name}}"
 pre-release-hook = ["git", "fetch", "--tags", "--quiet", "origin"]
+
+[workspace]
+resolver = "3"
+members = ["x-api", "vendor/twr-tx"]

@@ -14,3 +14,6 @@ pub mod backend;
 
 /// OAuth 1.0a signing primitives (RFC 5849).
 pub mod oauth1;
+
+/// Internal web-API backend that reuses browser session cookies.
+pub mod web;

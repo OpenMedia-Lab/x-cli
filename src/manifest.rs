@@ -144,7 +144,7 @@ pub fn clap_command(app_spec: &AppSpec) -> Command {
         command = command.subcommand(build_subcommand(subcommand));
     }
 
-    command
+    command.subcommand(crate::native::command())
 }
 
 /// Flattens a command tree into `(path, leaf_command)` tuples.

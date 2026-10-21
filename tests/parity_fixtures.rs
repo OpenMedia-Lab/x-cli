@@ -656,9 +656,9 @@ fn stream_subcommand_streams_events() {
 fn update_with_file_uploads_media_before_creating_tweet() {
     let mut backend = MockBackend::new();
     backend.enqueue_json_response(
-        "POST",
-        "/1.1/media/upload.json",
-        serde_json::json!({"media_id_string":"999"}),
+        "POST_JSON",
+        "/2/media/upload",
+        serde_json::json!({"data":{"id":"999"}}),
     );
     backend.enqueue_json_response(
         "POST_JSON",
@@ -677,12 +677,15 @@ fn update_with_file_uploads_media_before_creating_tweet() {
         run_cmd_with_profile(&["update", "hello", "--file", &file_arg], &mut backend);
 
     assert_success(code, &err);
-    assert!(
-        backend
-            .calls()
-            .iter()
-            .any(|call| call.method == "POST" && call.path == "/1.1/media/upload.json")
-    );
+    let upload_call = backend
+        .calls()
+        .iter()
+        .find(|call| call.method == "POST_JSON" && call.path == "/2/media/upload")
+        .expect("media upload call should be present");
+    let upload = serde_json::from_str::<Value>(&upload_call.params[0].1)
+        .expect("media upload payload should be valid json");
+    assert_eq!(upload["media"], "aGVsbG8gbWVkaWE=");
+    assert_eq!(upload["media_category"], "tweet_image");
     let tweet_call = backend
         .calls()
         .iter()

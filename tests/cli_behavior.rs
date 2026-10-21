@@ -145,3 +145,21 @@ fn timeline_without_credentials_returns_authorization_error() {
             "No active credentials found in profile",
         ));
 }
+
+#[test]
+fn authorize_without_credentials_starts_onboarding() {
+    let temp = tempfile::tempdir().expect("tempdir should be created");
+    let profile = temp.path().join("empty.trc");
+    let mut cmd = cargo_bin_cmd!("x");
+    cmd.args([
+        "authorize",
+        "--display-uri",
+        "--profile",
+        utf8_path(&profile),
+    ])
+    .write_stdin("\n\n\n")
+    .assert()
+    .code(1)
+    .stdout(predicate::str::contains("Welcome! Before you can use t"))
+    .stderr(predicate::str::contains("API key and secret are required"));
+}

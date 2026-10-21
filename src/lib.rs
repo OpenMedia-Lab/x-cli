@@ -8,6 +8,7 @@ The module also re-exports `x-api` backend traits for test injection.
 
 /// Command-tree parsing primitives derived from the legacy Ruby CLI.
 pub mod manifest;
+mod native;
 /// Rc/profile loading, migration, and account selection helpers.
 pub mod rcfile;
 mod runner;
@@ -45,6 +46,10 @@ where
 
 /// Runs the CLI using process arguments, stdout, and stderr.
 pub fn run() -> i32 {
+    let args: Vec<_> = std::env::args_os().collect();
+    if args.get(1).is_some_and(|arg| arg == "native") {
+        return native::run(args.into_iter().skip(1).collect());
+    }
     let mut stdout = std::io::stdout();
     let mut stderr = std::io::stderr();
     run_with_io(std::env::args_os(), &mut stdout, &mut stderr)

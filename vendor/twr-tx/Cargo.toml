@@ -1,0 +1,15 @@
+[package]
+name = "twr-tx"
+version = "0.1.1"
+edition = "2021"
+license = "MIT"
+description = "Vendored X transaction ID derivation from quangdang46/twitter_cli"
+
+[dependencies]
+regex = "1"
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"

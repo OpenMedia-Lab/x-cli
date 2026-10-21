@@ -17,6 +17,7 @@ use x_api::backend::{
     post_json_with_retry,
 };
 use x_api::oauth1::{self, ParamList, Token};
+use x_api::web::WebBackend;
 
 const DEFAULT_NUM_RESULTS: usize = 20;
 const MAX_SEARCH_RESULTS: usize = 100;
@@ -151,7 +152,7 @@ where
         .map(|values| values.cloned().collect::<Vec<_>>())
         .unwrap_or_default();
 
-    let result = match execute_local_command(&path, leaf, &args, &context, out) {
+    let result = match execute_local_command(&path, leaf, &args, &context, out, err) {
         Ok(Some(exit_code)) => Ok(exit_code),
         Ok(None) => match backend_override {
             Some(backend) => {
@@ -183,6 +184,11 @@ fn execute_remote_with_profile_backend(
     out: &mut dyn Write,
     err: &mut dyn Write,
 ) -> Result<i32, CommandError> {
+    if web_backend_enabled() {
+        let mut backend = WebBackend::new()?;
+        return execute_remote_command(path, leaf, args, context, &mut backend, out, err);
+    }
+
     let rcfile = RcFile::load(&context.profile_path)?;
     let Some(credentials) = rcfile.active_credentials().cloned() else {
         return Err(CommandError::Backend(BackendError::MissingCredentials));
@@ -190,6 +196,14 @@ fn execute_remote_with_profile_backend(
 
     let mut backend = TwitterBackend::from_credentials(credentials)?;
     execute_remote_command(path, leaf, args, context, &mut backend, out, err)
+}
+
+/// Returns true when `X_BACKEND=web` selects the cookie-based internal
+/// web-API backend instead of the official developer-credentials backend.
+fn web_backend_enabled() -> bool {
+    std::env::var("X_BACKEND")
+        .map(|value| value.eq_ignore_ascii_case("web"))
+        .unwrap_or(false)
 }
 
 struct CommandContext {
@@ -301,8 +315,13 @@ fn execute_local_command(
     args: &[String],
     context: &CommandContext,
     out: &mut dyn Write,
+    err: &mut dyn Write,
 ) -> Result<Option<i32>, CommandError> {
     match path {
+        [single] if single == "authorize" => {
+            run_authorize(leaf, &context.profile_path, out, err)?;
+            Ok(Some(0))
+        }
         [single] if single == "version" => {
             writeln!(out, "{}", env!("CARGO_PKG_VERSION")).ok();
             Ok(Some(0))
@@ -381,10 +400,6 @@ fn execute_remote_command(
         .unwrap_or_else(|| "unknown".to_string());
 
     match path {
-        [single] if single == "authorize" => {
-            run_authorize(leaf, &context.profile_path, out, err)?;
-            Ok(0)
-        }
         [single] if single == "open" => {
             ensure_min_args(path, args, 1)?;
             if opt_bool(leaf, "status") {
@@ -2922,6 +2937,11 @@ fn run_authorize(
         .ok()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or(prompt(out, "Enter your API secret:")?);
+    if key.trim().is_empty() || secret.trim().is_empty() {
+        return Err(CommandError::Other(
+            "API key and secret are required".to_string(),
+        ));
+    }
 
     let (request_token, request_secret) = oauth_request_token(&key, &secret)?;
     let authorize_uri = format!(
@@ -3673,23 +3693,16 @@ fn load_file_as_base64(path: &str) -> Result<String, CommandError> {
 
 fn upload_media(backend: &mut dyn Backend, file_path: &str) -> Result<String, CommandError> {
     let media_data = load_file_as_base64(file_path)?;
-    let response = post_json_with_retry(
-        backend,
-        "/1.1/media/upload.json",
-        vec![("media_data".to_string(), media_data.clone())],
+    let response = backend.post_json_body(
+        "/2/media/upload",
+        serde_json::json!({ "media": media_data, "media_category": "tweet_image" }),
     )?;
 
     let media_id = response
-        .get("media_id_string")
+        .pointer("/data/id")
         .and_then(Value::as_str)
-        .map(ToString::to_string)
-        .or_else(|| {
-            response
-                .get("media_id")
-                .and_then(value_to_string)
-                .filter(|id| !id.is_empty())
-        })
-        .unwrap_or_default();
+        .unwrap_or_default()
+        .to_string();
 
     if media_id.is_empty() {
         return Err(CommandError::Io(io::Error::other(

@@ -1,0 +1,6 @@
+Vendored from https://github.com/quangdang46/twitter_cli/tree/683080aec1efac8c40ccf184c3b46b347edc75df/crates/twr-tx
+Copyright (c) 2026 twr contributors. MIT License (LICENSE).
+
+Transaction derivation ported from iSarabjitDhiman/XClientTransaction (MIT),
+Copyright (c) 2025 Sarabjit Dhiman, via the intermediate agentic-x Python port.
+This repository uses the Rust implementation directly; no Python runtime is required.

@@ -1,49 +1,17 @@
-name: Test
-
-on:
-  pull_request:
-  push:
-    branches:
-      - main
-
+name: Rust
+on: [push, pull_request]
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  cli:
-    name: CLI cargo test
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v2
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          rustflags: ""
-
-      - name: Test
-        run: cargo test --locked
-
-  x_api:
-    name: x-api cargo test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v2
-        with:
-          rustflags: ""
-
-      - name: Test
-        run: cargo test --manifest-path x-api/Cargo.toml
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo build --locked --release
