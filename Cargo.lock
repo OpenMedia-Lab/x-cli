@@ -3048,7 +3048,7 @@ name = "twr-tx"
 version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
- "rand 0.8.8",
+ "rand 0.10.2",
  "regex",
  "serde",
  "serde_json",
