@@ -3047,7 +3047,7 @@ checksum = "86a801b3cea342a06d468c8710662aa29e5e05e4f5c0d62f00bbb7f2ad7941c2"
 name = "twr-tx"
 version = "0.1.1"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.23.1",
  "rand 0.8.8",
  "regex",
  "serde",
