@@ -431,11 +431,7 @@ impl WebBackend {
                 .unwrap()
                 .clone(),
         )?;
-        let result = response
-            .pointer("/data/viewer/user_results/result")
-            .or_else(|| response.pointer("/data/viewer/user_result/result"))
-            .ok_or_else(|| BackendError::Http("Viewer returned no account".into()))?;
-        Ok(serde_json::json!({"data": normalize_user(result)}))
+        viewer_profile(&response)
     }
 
     /// Reads a public user profile by screen name.
@@ -635,6 +631,11 @@ impl Backend for WebBackend {
     }
 }
 
+fn session_domain(domain: &str) -> bool {
+    let d = domain.trim_start_matches('.');
+    d == "x.com" || d.ends_with(".x.com") || d == "twitter.com" || d.ends_with(".twitter.com")
+}
+
 /// Extracts `x.com` cookies from local browser profiles.
 fn extract_browser_cookies() -> Result<Vec<rookie::enums::Cookie>, BackendError> {
     let domains = vec!["x.com".to_string(), "twitter.com".to_string()];
@@ -651,9 +652,7 @@ fn extract_browser_cookies() -> Result<Vec<rookie::enums::Cookie>, BackendError>
             Ok(cookies) => {
                 let session: Vec<rookie::enums::Cookie> = cookies
                     .into_iter()
-                    .filter(|cookie| {
-                        cookie.domain.contains("x.com") || cookie.domain.contains("twitter.com")
-                    })
+                    .filter(|cookie| session_domain(&cookie.domain))
                     .collect();
                 if session.iter().any(|c| c.name == "auth_token")
                     && session.iter().any(|c| c.name == "ct0")
@@ -859,5 +858,59 @@ mod native_tests {
         let result = normalize_timeline(&response);
         assert_eq!(result["data"][0]["id"], "42");
         assert_eq!(result["next_cursor"], "next-page");
+    }
+}
+
+#[cfg(test)]
+mod login_domain_tests {
+    #[test]
+    fn ignores_lookalike_cookie_domains() {
+        for d in ["x.com", ".x.com", "api.twitter.com"] {
+            assert!(super::session_domain(d));
+        }
+        for d in ["notx.com", "x.com.evil.invalid", "twitter.com.evil.invalid"] {
+            assert!(!super::session_domain(d));
+        }
+    }
+}
+
+fn viewer_profile(response: &Value) -> Result<Value, BackendError> {
+    let result = response
+        .pointer("/data/viewer/user_results/result")
+        .or_else(|| response.pointer("/data/viewer/user_result/result"))
+        .ok_or_else(|| BackendError::Http("Viewer returned no account".into()))?;
+    if !result
+        .get("rest_id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.is_empty())
+    {
+        return Err(BackendError::Http(
+            "Viewer returned no authenticated account ID".into(),
+        ));
+    }
+    Ok(serde_json::json!({"data": normalize_user(result)}))
+}
+
+#[cfg(test)]
+mod viewer_profile_tests {
+    use super::*;
+    #[test]
+    fn rejects_null_empty_and_unavailable_accounts() {
+        for result in [
+            serde_json::json!(null),
+            serde_json::json!({}),
+            serde_json::json!({"__typename":"UserUnavailable"}),
+        ] {
+            assert!(
+                viewer_profile(
+                    &serde_json::json!({"data":{"viewer":{"user_results":{"result":result}}}})
+                )
+                .is_err()
+            );
+        }
+    }
+    #[test]
+    fn accepts_a_real_account_id() {
+        assert_eq!(viewer_profile(&serde_json::json!({"data":{"viewer":{"user_results":{"result":{"rest_id":"123","legacy":{"screen_name":"fixture"}}}}}})).unwrap()["data"]["id"],"123");
     }
 }

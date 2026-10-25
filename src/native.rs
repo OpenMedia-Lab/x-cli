@@ -21,6 +21,7 @@ pub(crate) fn command() -> Command {
     Command::new("native")
         .about("Browser-session X operations; outputs JSON")
         .subcommand_required(true)
+        .subcommand(Command::new("login").about("Official browser login; --qr uses browser/OS Passkey QR when available").arg(Arg::new("qr").long("qr").action(ArgAction::SetTrue).help("Choose Passkey and a nearby device in the browser; requires an enrolled Passkey")).arg(Arg::new("timeout").long("timeout").default_value("180").value_parser(clap::value_parser!(u64).range(1..=600))))
         .subcommand(Command::new("me"))
         .subcommand(Command::new("user").arg(Arg::new("username").required(true)))
         .subcommand(Command::new("read").arg(Arg::new("id").required(true)))
@@ -76,6 +77,12 @@ pub(crate) fn run(args: Vec<std::ffi::OsString>) -> i32 {
         vec![]
     };
     let execute = || -> Result<Value, Box<dyn std::error::Error>> {
+        if operation == "login" {
+            return crate::login::run(
+                options.get_flag("qr"),
+                *options.get_one::<u64>("timeout").unwrap(),
+            );
+        }
         if images.len() > 4 {
             return Err("X supports at most four images per post".into());
         }

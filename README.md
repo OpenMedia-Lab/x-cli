@@ -51,3 +51,13 @@ Do not add cookie dumps, browser databases, or `.env` files to source control. L
 ## License
 
 [MIT](LICENSE.md). Original copyright Erik Berlin; upstream attribution is preserved.
+
+## Interactive login and Passkey QR
+
+```sh
+x native login --qr --timeout 180
+```
+
+An already verified browser session is reused. Otherwise the CLI opens the official X login page in Chrome and waits for a verified browser session. Choose **Passkey**, then **another/nearby device** if the browser offers it: the browser/OS renders the real cross-device QR. This requires an enrolled Passkey and compatible devices; account/platform support varies. Without it, complete normal official browser login. The CLI does not synthesize an X App-scan QR, collect passwords, or claim that a profile QR authenticates a session.
+
+X does not provide a native App QR authorization endpoint comparable to Bilibili. See [X Passkeys](https://help.x.com/en/managing-your-account/how-to-use-passkey) and [Chrome cross-device Passkeys](https://support.google.com/chrome/answer/13168025). Session verification, not opening the page or scanning alone, determines success. Native operations still use Rust HTTP calls.

@@ -6,6 +6,7 @@ Most applications should execute the CLI by calling [`run`] or [`run_with_io`].
 The module also re-exports `x-api` backend traits for test injection.
 "#]
 
+mod login;
 /// Command-tree parsing primitives derived from the legacy Ruby CLI.
 pub mod manifest;
 mod native;
